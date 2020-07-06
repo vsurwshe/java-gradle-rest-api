@@ -1,0 +1,72 @@
+server:
+  port: 9002
+  max-http-header-size: 58000
+  
+  compression:
+    enabled: false
+  
+spring:
+  profiles: default
+  application:
+    name: booster
+  datasource:
+    url: jdbc:mysql://172.104.34.172:3306/projectmanagment?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&autoReconnect=true&useSSL=false
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    tomcat:
+      test-while-idle: true
+      validation-query: SELECT 1
+    initialization-mode: never
+    platform: mysql
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL5InnoDBDialect
+    hibernate:
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+      ddl-auto: update
+      
+  jackson:
+    property-naming-strategy: LOWER_CAMEL_CASE
+    serialization:
+      indent-output: true
+  batch:
+    job:
+      enabled: false
+logging:
+  level:
+    ROOT: ERROR
+    org.springframework.web: DEBUG
+    com.oxygenglobal.microservices: DEBUG
+  file: booster.log
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    
+
+rest:
+  api:
+    kafka:
+      email:
+        url: http://localhost:8002/send/emailLink
+    wallet:
+        url: http://localhost:9002
+    master:
+      url: http://localhost:8000
+application:
+  exchangeRate:
+    url: https://api.binance.com/api/v3/ticker/price?symbol=
+hmac:
+  value: secret
+  enabled: false
+  exclude-hmac: swagger,api-docs
+
+
+  
+
+
+
+ 
