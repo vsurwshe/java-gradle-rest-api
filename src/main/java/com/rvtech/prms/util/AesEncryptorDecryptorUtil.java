@@ -73,9 +73,9 @@ public class AesEncryptorDecryptorUtil {
 	public static void main(String[] args) {
 	//	final String secretKey = "SssHhhhhhhhhhh20!!!!";
 
-		String originalString = "9986063632";
+		String originalString = "poornamgk@gmail.com";
 		String encryptedString = encrypt(originalString);
-		String decryptedString = decrypt("SrRJVPJy+J73yFb1pJvYBQ==");
+		String decryptedString = decrypt("/RQKaAPTZyFrY/l195cjHZoiQi2yUONzjF6FQAN7CNw=");
 
 		System.out.println(originalString);
 		System.out.println(encryptedString);

@@ -19,6 +19,11 @@ public interface ProjectRepository extends CrudRepository<ProjectEntity, String>
 			String clientName, String clientId, Boolean active, Pageable page);
 
 	List<ProjectEntity> findAllByActive(Boolean active, Pageable page);
+	
+	List<ProjectEntity> findAllByActive(Boolean active);
+	
+	List<ProjectEntity> findByClientId(String clientId);
+	
 
 	@Modifying(clearAutomatically = true)
 	@Query("UPDATE ProjectEntity c SET c.active = :active WHERE c.id = :projId")

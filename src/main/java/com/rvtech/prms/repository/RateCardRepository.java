@@ -15,6 +15,6 @@ public interface RateCardRepository extends CrudRepository<RateCardEntity, Strin
 
 	List<RateCardEntity> findByClientId(String clientId);
 
-	@Query(value = "select rate,rateCardDuration,rateCardType from RateCardEntity  where id=:ratecardId")
-	Object[] findRateById(@Param(value = "ratecardId") String ratecardId);
+	@Query(value = "select rate,rateCardDuration,rateCardType from ratecard  where id=:ratecardId",nativeQuery = true)
+	List<String> findRateById(@Param(value = "ratecardId") String ratecardId);
 }

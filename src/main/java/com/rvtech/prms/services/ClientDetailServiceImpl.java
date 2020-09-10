@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.MultiValueMap;
 
 import com.rvtech.prms.common.AddressDto;
+import com.rvtech.prms.common.AttendanceFrGraphDto;
 import com.rvtech.prms.common.BankDetailsDto;
 import com.rvtech.prms.common.ClientDetailDto;
 import com.rvtech.prms.common.ContactPersonDto;
@@ -137,29 +138,44 @@ public class ClientDetailServiceImpl {
 		}
 
 		try {
-			clientId = new ArrayList<Map<String, String>>();
 			Calendar calendar = Calendar.getInstance();
 			// To calculet how many month data have to fetch
 			int endMonth = 0;
+			int queryYear = 0;
 			if (calendar.get(Calendar.MONTH) > 2) {
 				endMonth = calendar.get(Calendar.MONTH) - 2;
+				calendar.set(calendar.get(Calendar.YEAR), 3, 1);
+
 			} else {
 				endMonth = 10 + calendar.get(Calendar.MONTH);
+				calendar.set(calendar.get(Calendar.YEAR) - 1, 3, 1);
 			}
-			calendar.set(calendar.get(Calendar.YEAR), 3, 1);
-			Date startDate = calendar.getTime();
-			int lastDate = calendar.getActualMaximum(Calendar.DATE);
-			calendar.set(calendar.get(Calendar.YEAR), 3, lastDate);
-			Date endDate = calendar.getTime();
+
 			for (int i = 0; i < endMonth; i++) {
 				List<Object[]> objects = null;
+				/*
+				 * if (calendar.get(Calendar.MONTH) > 2) { queryYear = 1;// Indicate part of
+				 * financial year. If financial year is 2020/2021 , then 2020 // is first part }
+				 * else { queryYear = 2; }
+				 */
+				// if (queryYear == 1) {
 				if (filterDto == null || filterDto.getClientId() == null) {
-					objects = clientDetailRepository.employeeCountByClient(dateFormat.format(startDate),
-							dateFormat.format(endDate));
+					objects = clientDetailRepository.employeeCountByClient(dateFormat.format(calendar.getTime()));
 				} else {
-					objects = clientDetailRepository.employeeCountByClientId(filterDto.getClientId(),
-							dateFormat.format(startDate), dateFormat.format(endDate));
+
+					objects = clientDetailRepository.employeeCountByClient(filterDto.getClientId(),
+							dateFormat.format(calendar.getTime()));
+
 				}
+				/*
+				 * } else { if (filterDto == null || filterDto.getClientId() == null) {
+				 * calendar.set(Calendar.DATE, calendar.getActualMaximum(Calendar.DATE));
+				 * objects = clientDetailRepository
+				 * .employeeCountByClientFrNextFE(dateFormat.format(calendar.getTime())); } else
+				 * { objects =
+				 * clientDetailRepository.employeeCountByClientIdFrNextFE(filterDto.getClientId(
+				 * ), (calendar.get(Calendar.MONTH) + 1), calendar.get(Calendar.YEAR)); } }
+				 */
 				Map<String, Float> map = new HashMap<String, Float>();
 				map.put("xaxis", (float) calendar.get(Calendar.MONTH) + 1);
 				if (objects != null) {
@@ -168,12 +184,141 @@ public class ClientDetailServiceImpl {
 					}
 				}
 				clientData.add(map);
+				calendar.add(Calendar.MONTH, 1);
+
+			}
+			dBClientDataDto.setClientData(clientData);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			logger.error("PurchaseOrderServiceImpl::delete::" + e.getMessage());
+			headers.add(Constants.STATUS, HttpStatus.INTERNAL_SERVER_ERROR.toString());
+			headers.add(Constants.MESSAGE, "Something went wrong");
+			responceMap.put("Status", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+		return new ResponseEntity<>(dBClientDataDto, headers, HttpStatus.OK);
+
+	}
+
+	public ResponseEntity<?> employesAttendenceData(FilterDto filterDto) {
+		List<AttendanceFrGraphDto> attendanceData = new ArrayList<AttendanceFrGraphDto>();
+		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+
+		int update;
+		responceMap = new HashMap<String, Object>();
+		headers = Utilities.getDefaultHeader();
+		// Fetching all clients with ids
+
+		try {
+			Calendar calendar = Calendar.getInstance();
+			// To calculet how many month data have to fetch
+			int endMonth = 0;
+			int queryYear = 0;
+			if (calendar.get(Calendar.MONTH) > 2) {
+				endMonth = calendar.get(Calendar.MONTH) - 2;
+				calendar.set(calendar.get(Calendar.YEAR), 3, 1);
+
+			} else {
+				endMonth = 10 + calendar.get(Calendar.MONTH);
+				calendar.set(calendar.get(Calendar.YEAR) - 1, 3, 1);
+			}
+
+			for (int i = 0; i < endMonth; i++) {
+				AttendanceFrGraphDto attendanceFrGraphDto = new AttendanceFrGraphDto();
+				Date startDate = calendar.getTime();
+				calendar.set(Calendar.DATE, calendar.getActualMaximum(Calendar.DATE));
+				Date endDate = calendar.getTime();
+				int joinCount = clientDetailRepository.noOfEmployeJoined(dateFormat.format(startDate),
+						dateFormat.format(endDate));
+				int exitCount = clientDetailRepository.noOfEmployeExit(dateFormat.format(startDate),
+						dateFormat.format(endDate));
+				attendanceFrGraphDto.setXaxis(String.valueOf(calendar.get(Calendar.MONTH) + 1));
+				attendanceFrGraphDto.setLeft(exitCount);
+				attendanceFrGraphDto.setHired(joinCount);
+				attendanceData.add(attendanceFrGraphDto);
 				calendar.setTime(startDate);
 				calendar.add(Calendar.MONTH, 1);
-				startDate = calendar.getTime();
-				lastDate = calendar.getActualMaximum(Calendar.DATE);
-				calendar.set(Calendar.DATE, lastDate);
-				endDate = calendar.getTime();
+
+			}
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			logger.error("PurchaseOrderServiceImpl::delete::" + e.getMessage());
+			headers.add(Constants.STATUS, HttpStatus.INTERNAL_SERVER_ERROR.toString());
+			headers.add(Constants.MESSAGE, "Something went wrong");
+			responceMap.put("Status", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+		return new ResponseEntity<>(attendanceData, headers, HttpStatus.OK);
+
+	}
+
+	public ResponseEntity<?> readClientWiseBilledData(FilterDto filterDto) {
+		DBClientDataDto dBClientDataDto = new DBClientDataDto();
+		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM");
+		List<Map<String, String>> clientId = new ArrayList<Map<String, String>>();
+		List<Map<String, Float>> clientData = new ArrayList<Map<String, Float>>();
+		int update;
+		responceMap = new HashMap<String, Object>();
+		headers = Utilities.getDefaultHeader();
+		// Fetching all clients with ids
+		try {
+			if (filterDto == null || filterDto.getClientId() == null) {
+				List<Object[]> objects = clientDetailRepository.allclient();
+				for (Object[] obj : objects) {
+					Map<String, String> map = new HashMap<String, String>();
+					map.put("name", (String) obj[0]);
+					map.put("value", (String) obj[1]);
+					clientId.add(map);
+				}
+				dBClientDataDto.setClientId(clientId);
+			} else {
+				ClientDetailsEntity clientDetailsEntity = clientDetailRepository
+						.findByIdAndActive(filterDto.getClientId(), true);
+				Map<String, String> map = new HashMap<String, String>();
+				map.put("name", clientDetailsEntity.getClientName());
+				map.put("value", clientDetailsEntity.getId());
+				clientId.add(map);
+				dBClientDataDto.setClientId(clientId);
+			}
+
+		} catch (Exception exception) {
+			exception.printStackTrace();
+		}
+
+		try {
+			Calendar calendar = Calendar.getInstance();
+			calendar.set(2021, 02, 01);
+			// To calculet how many month data have to fetch
+			int endMonth = 0;
+			int queryYear = 0;
+			if (calendar.get(Calendar.MONTH) > 2) {
+				endMonth = calendar.get(Calendar.MONTH) - 2;
+				calendar.set(calendar.get(Calendar.YEAR), 3, 1);
+
+			} else {
+				endMonth = 10 + calendar.get(Calendar.MONTH);
+				calendar.set(calendar.get(Calendar.YEAR) - 1, 3, 1);
+			}
+
+			for (int i = 0; i < endMonth; i++) {
+				List<Object[]> objects = null;
+
+				if (filterDto == null || filterDto.getClientId() == null) {
+					objects = clientDetailRepository.invoiceAmountSumByClientId(calendar.get(Calendar.MONTH) + 1,
+							calendar.get(Calendar.YEAR));
+				} else {
+					objects = clientDetailRepository.invoiceAmountSumByClientId(calendar.get(Calendar.MONTH) + 1,
+							calendar.get(Calendar.YEAR), filterDto.getClientId());
+				}
+
+				Map<String, Float> map = new HashMap<String, Float>();
+				map.put("xaxis", (float) calendar.get(Calendar.MONTH) + 1);
+				if (objects != null) {
+					for (Object[] obj : objects) {
+						map.put((String) obj[0], ((Double) obj[1]).floatValue());
+					}
+				}
+				clientData.add(map);
+				calendar.add(Calendar.MONTH, 1);
+
 			}
 			dBClientDataDto.setClientData(clientData);
 		} catch (Exception e) {

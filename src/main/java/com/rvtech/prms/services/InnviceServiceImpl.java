@@ -19,6 +19,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MultiValueMap;
 
+import com.rvtech.prms.common.DBClientDataDto;
+import com.rvtech.prms.common.FilterDto;
 import com.rvtech.prms.common.InnvoiceDto;
 import com.rvtech.prms.common.InvoiceDetailDto;
 import com.rvtech.prms.common.InvoiceGenDto;
@@ -85,6 +87,8 @@ public class InnviceServiceImpl {
 
 	private List<ProjectEmployeMappingEntity> projEmplList;
 
+	private List<ProjectEntity> projList;
+
 	SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy");
 
 	SimpleDateFormat dateFormatAtt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -109,6 +113,243 @@ public class InnviceServiceImpl {
 	private Calendar calendar = Calendar.getInstance();
 
 	private int monDiff;
+
+	public ResponseEntity<?> projectWiseBill(FilterDto filterDto) {
+		DBClientDataDto dBClientDataDto = new DBClientDataDto();
+		List<Map<String, String>> clientId = new ArrayList<Map<String, String>>();
+		List<Map<String, Float>> clientData = new ArrayList<Map<String, Float>>();
+		Map<String, Float> projectWiseBill;
+		daypermon = new HashMap<Integer, Float>();
+		InvoiceEntity innvoiseEntity = null;
+		Date onboardingDate;
+		Date exitDate;
+		Float projectCost = (float) 0;
+		Float rateCost = null;
+		float innCost = 0;
+		int dayPresent = 0;
+		int halfDay = 0;
+		// int toMon = calendar.get(Calendar.MONTH) + 1;
+		// monDiff = toMon - startMon;
+
+		ProjectEmployeMappingEntity projectEmployeMappingEntity = null;
+		responceMap = new HashMap<String, Object>();
+		headers = Utilities.getDefaultHeader();
+
+		try {
+			projList = new ArrayList<ProjectEntity>();
+			projList = projectRepository.findAllByActive(true);
+			for (ProjectEntity obj : projList) {
+				Map<String, String> map = new HashMap<String, String>();
+				map.put("name", (String) obj.getProjectName());
+				map.put("value", (String) obj.getId());
+				clientId.add(map);
+			}
+			dBClientDataDto.setClientId(clientId);
+
+		} catch (Exception e) {
+			logger.error("InnviceServiceImpl::create::Fetching employeeList on projectId" + e.getMessage());
+		}
+
+		if (projList != null && !projList.isEmpty()) {
+
+			invoiceDetailEntities = new ArrayList<InvoiceDetailEntity>();
+			for (ProjectEntity projecEntity : projList) {
+				innCost = 0;
+				projectWiseBill = new HashMap<String, Float>();
+				try {
+					projectWiseBill.put(projecEntity.getId(), (float) 0);
+					projEmplList = new ArrayList<ProjectEmployeMappingEntity>();
+					projEmplList = projectEmployeMappingRepository.findAllByProjectId(projecEntity.getId());
+					// Calculating per day rate of employee based on information
+					for (ProjectEmployeMappingEntity projecEmplMapping : projEmplList) {
+						dayPresent = 0;
+						halfDay = 0;
+						List<String> rateObj = rateCardRepository.findRateById(projecEmplMapping.getRateCardId());
+						String rate = rateObj.get(0);
+
+						if (String.valueOf(rate).split(",")[2].equals("Daily")) {
+							rateCost = Float.valueOf(String.valueOf(rate).split(",")[0]);
+						} else if (rateObj.equals("Daily")) {
+						} else {
+						}
+
+						onboardingDate = projecEmplMapping.getOnbordaingDate();
+						exitDate = projecEmplMapping.getExitDate() == null ? new Date()
+								: projecEmplMapping.getExitDate();
+						List<AttendanceEntity> attendanceEntities = attendanceRepository.findattendance(
+								projecEmplMapping.getAccountId(), dateFormatAtt.format(onboardingDate),
+								dateFormatAtt.format(exitDate));
+
+						for (AttendanceEntity attendanceEntity : attendanceEntities) {
+							String[] splitPresentDayAray = attendanceEntity.getDayPresent().split(",");
+							for (int i = 1; i < splitPresentDayAray.length; i++) {
+								if (splitPresentDayAray[i] != null && !splitPresentDayAray[i].equals(" ")
+										&& dateFormat.parse(splitPresentDayAray[i]).getTime() >= onboardingDate
+												.getTime()
+										&& dateFormat.parse(splitPresentDayAray[i]).getTime() <= exitDate.getTime()) {
+									dayPresent++;
+								}
+							}
+							innCost = (dayPresent * rateCost) + innCost;
+							String[] splitHalfDayAray = attendanceEntity.getHalfDay().split(",");
+							for (int i = 1; i < splitHalfDayAray.length; i++) {
+								if (splitHalfDayAray[i] != null && !splitHalfDayAray[i].equals(" ")
+										&& dateFormat.parse(splitPresentDayAray[i]).getTime() >= onboardingDate
+												.getTime()
+										&& dateFormat.parse(splitPresentDayAray[i]).getTime() <= exitDate.getTime()) {
+									halfDay++;
+									calendar.setTime(dateFormat.parse(splitPresentDayAray[i]));
+									daypermon.put(calendar.get(Calendar.MONTH) + 1,
+											(daypermon.get(calendar.get(Calendar.MONTH) + 1) + (float) 0.5));
+								}
+							}
+							innCost = (((halfDay / 2) + (halfDay % 2)) * rateCost) + innCost;
+
+						}
+					}
+
+				} catch (Exception exception) {
+					logger.error("projectWiseBill" + exception.getMessage());
+				}
+				projectWiseBill.put(projecEntity.getId(), innCost);
+				clientData.add(projectWiseBill);
+			}
+			dBClientDataDto.setClientData(clientData);
+
+		}
+
+		try {
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			logger.error("ExpenceServiceImpl::create::" + e.getMessage());
+			headers.add(Constants.STATUS, HttpStatus.INTERNAL_SERVER_ERROR.toString());
+			headers.add(Constants.MESSAGE, "Something went wrong");
+			responceMap.put("Status", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+
+		return new ResponseEntity<>(dBClientDataDto, headers, HttpStatus.OK);
+	}
+
+	public ResponseEntity<?> clientWiseBill(FilterDto filterDto) {
+		DBClientDataDto dBClientDataDto = new DBClientDataDto();
+		List<Map<String, String>> clientId = new ArrayList<Map<String, String>>();
+		List<Map<String, Float>> clientData = new ArrayList<Map<String, Float>>();
+		Map<String, Float> projectWiseBill = null;
+		List<ClientDetailsEntity> clientList;
+		daypermon = new HashMap<Integer, Float>();
+		InvoiceEntity innvoiseEntity = null;
+		Date onboardingDate;
+		Date exitDate;
+		Float projectCost = (float) 0;
+		Float rateCost = null;
+		float innCost = 0;
+		int dayPresent = 0;
+		int halfDay = 0;
+		List<Object[]> clientObject = null;
+		ProjectEmployeMappingEntity projectEmployeMappingEntity = null;
+		responceMap = new HashMap<String, Object>();
+		headers = Utilities.getDefaultHeader();
+
+		try {
+			clientList = new ArrayList<ClientDetailsEntity>();
+			clientObject = clientDetailRepository.allclient();
+			for (Object[] obj : clientObject) {
+				Map<String, String> map = new HashMap<String, String>();
+				map.put("name", (String) obj[0]);
+				map.put("value", (String) obj[1]);
+				clientId.add(map);
+			}
+			dBClientDataDto.setClientId(clientId);
+
+		} catch (Exception e) {
+			logger.error("InnviceServiceImpl::create::Fetching employeeList on projectId" + e.getMessage());
+		}
+		if (clientObject != null && !clientObject.isEmpty()) {
+			for (Object[] obj : clientObject) {
+				projectWiseBill = new HashMap<String, Float>();
+
+				projList = new ArrayList<ProjectEntity>();
+				projList = projectRepository.findByClientId((String) obj[1]);
+				innCost = 0;
+
+				for (ProjectEntity projecEntity : projList) {
+					try {
+						//projectWiseBill.put(projecEntity.getId(), (float) 0);
+						projEmplList = new ArrayList<ProjectEmployeMappingEntity>();
+						projEmplList = projectEmployeMappingRepository.findAllByProjectId(projecEntity.getId());
+						// Calculating per day rate of employee based on information
+						for (ProjectEmployeMappingEntity projecEmplMapping : projEmplList) {
+							dayPresent = 0;
+							halfDay = 0;
+							List<String> rateObj = rateCardRepository.findRateById(projecEmplMapping.getRateCardId());
+							String rate = rateObj.get(0);
+
+							if (String.valueOf(rate).split(",")[2].equals("Daily")) {
+								rateCost = Float.valueOf(String.valueOf(rate).split(",")[0]);
+							} else if (rateObj.equals("Daily")) {
+							} else {
+							}
+
+							onboardingDate = projecEmplMapping.getOnbordaingDate();
+							exitDate = projecEmplMapping.getExitDate() == null ? new Date()
+									: projecEmplMapping.getExitDate();
+							List<AttendanceEntity> attendanceEntities = attendanceRepository.findattendance(
+									projecEmplMapping.getAccountId(), dateFormatAtt.format(onboardingDate),
+									dateFormatAtt.format(exitDate));
+
+							for (AttendanceEntity attendanceEntity : attendanceEntities) {
+								String[] splitPresentDayAray = attendanceEntity.getDayPresent().split(",");
+								for (int i = 1; i < splitPresentDayAray.length; i++) {
+									if (splitPresentDayAray[i] != null && !splitPresentDayAray[i].equals(" ")
+											&& dateFormat.parse(splitPresentDayAray[i]).getTime() >= onboardingDate
+													.getTime()
+											&& dateFormat.parse(splitPresentDayAray[i]).getTime() <= exitDate
+													.getTime()) {
+										dayPresent++;
+									}
+								}
+								innCost = (dayPresent * rateCost) + innCost;
+								String[] splitHalfDayAray = attendanceEntity.getHalfDay().split(",");
+								for (int i = 1; i < splitHalfDayAray.length; i++) {
+									if (splitHalfDayAray[i] != null && !splitHalfDayAray[i].equals(" ")
+											&& dateFormat.parse(splitPresentDayAray[i]).getTime() >= onboardingDate
+													.getTime()
+											&& dateFormat.parse(splitPresentDayAray[i]).getTime() <= exitDate
+													.getTime()) {
+										halfDay++;
+										calendar.setTime(dateFormat.parse(splitPresentDayAray[i]));
+										daypermon.put(calendar.get(Calendar.MONTH) + 1,
+												(daypermon.get(calendar.get(Calendar.MONTH) + 1) + (float) 0.5));
+									}
+								}
+								innCost = (((halfDay / 2) + (halfDay % 2)) * rateCost) + innCost;
+
+							}
+						}
+
+					} catch (Exception exception) {
+						logger.error("projectWiseBill" + exception.getMessage());
+					}
+					
+				}
+				projectWiseBill.put((String) obj[1], innCost);
+				clientData.add(projectWiseBill);
+			}
+			dBClientDataDto.setClientData(clientData);
+
+		}
+
+		try {
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			logger.error("ExpenceServiceImpl::create::" + e.getMessage());
+			headers.add(Constants.STATUS, HttpStatus.INTERNAL_SERVER_ERROR.toString());
+			headers.add(Constants.MESSAGE, "Something went wrong");
+			responceMap.put("Status", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+
+		return new ResponseEntity<>(dBClientDataDto, headers, HttpStatus.OK);
+	}
 
 	public ResponseEntity<?> create(InnvoiceDto innvoiceDto) {
 
@@ -152,12 +393,11 @@ public class InnviceServiceImpl {
 				int dayPresent = 0;
 				int halfDay = 0;
 				// Calculating per day rate of employee based on information
-				Object[] rateObj = rateCardRepository.findRateById(employeMappingEntity.getRateCardId());
-				if (rateObj[2].equals("Daily")) {
-					rateCost=(Float) rateObj[0];
-				} else if (rateObj[2].equals("Daily")) {
-				} else {
-				}
+				Object rateObj = rateCardRepository.findRateById(employeMappingEntity.getRateCardId());
+				/*
+				 * if (rateObj[2].equals("Daily")) { rateCost = (Float) rateObj[0]; } else if
+				 * (rateObj[2].equals("Daily")) { } else { }
+				 */
 				List<AttendanceEntity> attendanceEntities = attendanceRepository.findattendance(
 						employeMappingEntity.getAccountId(), dateFormatAtt.format(innvoiceDto.getFromDate()),
 						dateFormatAtt.format(innvoiceDto.getToDate()));
