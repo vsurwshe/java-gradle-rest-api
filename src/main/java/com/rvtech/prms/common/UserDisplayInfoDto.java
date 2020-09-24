@@ -1,6 +1,7 @@
 package com.rvtech.prms.common;
 
 import java.io.Serializable;
+import java.util.Date;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -28,5 +29,9 @@ public class UserDisplayInfoDto implements Serializable {
 	private String employeeNumber;
 	
 	private String domain;
+	
+	private Date latestAttFromDate;
+	
+	private Date latestAttToDate;
 
 }

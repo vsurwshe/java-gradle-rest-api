@@ -85,7 +85,7 @@ public class FileController {
 			}
 		}
 		if (fileDtos.get(0).getDescription().equalsIgnoreCase("attendance")) {
-			attendanceController.readExcel(documentURLS.get(0));
+			attendanceController.readExcel(fileDtos.get(0).getFromAttedDate(),fileDtos.get(0).getToAttedDate(),documentURLS.get(0));
 		}
 		if (fileDtos.get(0).getDescription().equalsIgnoreCase("registration")) {
 			registrationController.readExcel(documentURLS.get(0));

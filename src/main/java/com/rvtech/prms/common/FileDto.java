@@ -31,4 +31,8 @@ public class FileDto implements Serializable {
 	private Long fileSize;
 
 	private String accountId;
+	
+	private Date fromAttedDate;
+	
+	private Date toAttedDate;
 }

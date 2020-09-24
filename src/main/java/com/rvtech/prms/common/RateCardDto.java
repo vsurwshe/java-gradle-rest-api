@@ -25,7 +25,9 @@ public class RateCardDto {
 	
 	private Float rate;
 	
-	private String rateCardType;
+	//To specify Monthly,Hourly,Daily
+	private String rateCardType="Daily";
 	
-	private Float rateCardDuration;
+	//To Specify duration of rateCardType 
+	private Float rateCardDuration=(float) 0;
 }

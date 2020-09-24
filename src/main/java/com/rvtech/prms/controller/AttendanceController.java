@@ -57,8 +57,9 @@ public class AttendanceController {
 	 * Reading attendance excel
 	 */
 	@Async
-	@GetMapping(path = "/readExcel/{filePath:.+}")
-	public void readExcel(@PathVariable("filePath") String filePath) {
+	@GetMapping(path = "/readExcel/fromDate/toDate/{filePath:.+}")
+	public void readExcel(@PathVariable("fromDate") Date fromDate, @PathVariable("toDate") Date toDate,
+			@PathVariable("filePath") String filePath) {
 
 		attendanceList = new ArrayList<AttendanceDto>();
 		attendanceList.clear();
@@ -73,13 +74,13 @@ public class AttendanceController {
 				// creating Workbook instance that refers to .xlsx file
 				XSSFWorkbook wb = new XSSFWorkbook(fis);
 				XSSFSheet sheet = wb.getSheetAt(0); // creating a Sheet object to retrieve object
-				attendCal(sheet);
+				attendCal(fromDate, toDate, sheet);
 			} else {
 				HSSFWorkbook wb = new HSSFWorkbook(fis); // creating a Sheet object to retrieve the object
 				HSSFSheet sheet = wb.getSheetAt(0); // evaluating cell type
 				// FormulaEvaluator formulaEvaluator =
 				// wb.getCreationHelper().createFormulaEvaluator();
-				attendCal(sheet);
+				attendCal(fromDate, toDate, sheet);
 			}
 
 		} catch (FileNotFoundException e) {
@@ -95,7 +96,7 @@ public class AttendanceController {
 
 	}
 
-	public void attendCal(Sheet sheet) {
+	public void attendCal(Date fromDate, Date toDate, Sheet sheet) {
 		rowCount = 0; // Keep track of row
 		for (Row row : sheet) // iteration over row using for each loop
 		{
@@ -115,6 +116,9 @@ public class AttendanceController {
 					// getting the value of the cell as a number
 					break;
 				case Cell.CELL_TYPE_STRING: // field that represents string cell type
+					// Setting attendance xl fromDate and toDate
+					attendanceDto.setFromDate(fromDate);
+					attendanceDto.setToDate(toDate);
 					// getting the value of the cell as a string
 					if (rowCount == 0 && cell.getColumnIndex() == 5) {
 						String[] daystart = cell.getStringCellValue().split("\n");
@@ -187,7 +191,9 @@ public class AttendanceController {
 			attendanceDto.setHalfDay(halfDay);
 			attendanceDto.setWeekOff(weekOff);
 			attendanceDto.setDayPresent(dayPresent);
-			attendanceDto.setToDate(calendar.getTime());
+			if (attendanceDto.getToDate() == null) {
+				attendanceDto.setToDate(calendar.getTime());
+			}
 			attendanceList.add(attendanceDto);
 
 		}

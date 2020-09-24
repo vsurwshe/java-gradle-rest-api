@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 @Setter
 @Getter
-public class AttendanceFrGraphDto implements Serializable{
+public class GraphDto implements Serializable{
 
 	/**
 	 * 

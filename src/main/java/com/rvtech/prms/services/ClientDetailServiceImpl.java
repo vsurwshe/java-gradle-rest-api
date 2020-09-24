@@ -26,7 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.MultiValueMap;
 
 import com.rvtech.prms.common.AddressDto;
-import com.rvtech.prms.common.AttendanceFrGraphDto;
+import com.rvtech.prms.common.GraphDto;
 import com.rvtech.prms.common.BankDetailsDto;
 import com.rvtech.prms.common.ClientDetailDto;
 import com.rvtech.prms.common.ContactPersonDto;
@@ -200,7 +200,7 @@ public class ClientDetailServiceImpl {
 	}
 
 	public ResponseEntity<?> employesAttendenceData(FilterDto filterDto) {
-		List<AttendanceFrGraphDto> attendanceData = new ArrayList<AttendanceFrGraphDto>();
+		List<GraphDto> attendanceData = new ArrayList<GraphDto>();
 		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
 
 		int update;
@@ -223,7 +223,7 @@ public class ClientDetailServiceImpl {
 			}
 
 			for (int i = 0; i < endMonth; i++) {
-				AttendanceFrGraphDto attendanceFrGraphDto = new AttendanceFrGraphDto();
+				GraphDto attendanceFrGraphDto = new GraphDto();
 				Date startDate = calendar.getTime();
 				calendar.set(Calendar.DATE, calendar.getActualMaximum(Calendar.DATE));
 				Date endDate = calendar.getTime();
@@ -285,7 +285,7 @@ public class ClientDetailServiceImpl {
 
 		try {
 			Calendar calendar = Calendar.getInstance();
-			calendar.set(2021, 02, 01);
+			// calendar.set(2021, 02, 01);
 			// To calculet how many month data have to fetch
 			int endMonth = 0;
 			int queryYear = 0;
@@ -333,10 +333,10 @@ public class ClientDetailServiceImpl {
 	}
 
 	public ResponseEntity<?> create(ClientDetailDto clientDetailDto) {
-		Set<BankDetailsEntity> bankDetailEntitySet = new LinkedHashSet<BankDetailsEntity>();
-		Set<AddressDetailsEntity> addressDetailsEntities = new LinkedHashSet<AddressDetailsEntity>();
-		Set<ContactPersonEntity> contactPersonEntities = new LinkedHashSet<ContactPersonEntity>();
-		Set<RateCardEntity> rateCardEntities = new LinkedHashSet<RateCardEntity>();
+		List<BankDetailsEntity> bankDetailEntitySet = new ArrayList<BankDetailsEntity>();
+		List<AddressDetailsEntity> addressDetailsEntities = new ArrayList<AddressDetailsEntity>();
+		List<ContactPersonEntity> contactPersonEntities = new ArrayList<ContactPersonEntity>();
+		List<RateCardEntity> rateCardEntities = new ArrayList<RateCardEntity>();
 
 		ClientDetailsEntity clientDetailsEntity = null;
 		responceMap = new HashMap<String, Object>();
@@ -400,6 +400,8 @@ public class ClientDetailServiceImpl {
 				}
 
 				if (clientDetailDto.getRateCardDtos() != null && !clientDetailDto.getRateCardDtos().isEmpty()) {
+					System.out.println("Count Dto " + clientDetailDto.getRateCardDtos().size());
+					logger.info("Count Dto " + clientDetailDto.getRateCardDtos().size());
 					for (RateCardDto rateCardDto : clientDetailDto.getRateCardDtos()) {
 						RateCardEntity rateCardEntity = new RateCardEntity();
 
@@ -414,9 +416,12 @@ public class ClientDetailServiceImpl {
 						rateCardEntity.setClientId(clientDetailsEntity.getId());
 						rateCardEntity.setRateCardType(rateCardDto.getRateCardType());
 						rateCardEntity.setRateCardDuration(rateCardDto.getRateCardDuration());
+						// rateCardRepository.save(rateCardEntity);
 						rateCardEntities.add(rateCardEntity);
 
 					}
+					System.out.println("Count RateCard ..." + rateCardEntities.size());
+					// logger.info("Count RateCard ..."+rateCardEntities.size());
 					rateCardRepository.saveAll(rateCardEntities);
 				}
 			}

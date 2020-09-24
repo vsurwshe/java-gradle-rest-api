@@ -14,4 +14,6 @@ public interface AttendanceRepository extends CrudRepository<AttendanceEntity, S
 	List<AttendanceEntity> findattendance(@Param(value = "accountId") String accountId,
 			@Param(value = "fDate") String fDate, @Param(value = "tDate") String tDate);
 
+	@Query(value = "SELECT date(fromDate),date(toDate) from attendance where accountId=:accountId order by date(fromDate) desc limit 1", nativeQuery = true)
+	String findAttendanceToAndFromDate(@Param(value = "accountId") String accountId);
 }

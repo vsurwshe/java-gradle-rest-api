@@ -1,5 +1,6 @@
 package com.rvtech.prms.services;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,7 +32,7 @@ public class AttendanceServiceImpl {
 
 	@Autowired
 	private AttendanceRepository attendanceRepository;
-	
+
 	@Autowired
 	private UserInfoRepository userInfoRepository;
 
@@ -55,7 +56,7 @@ public class AttendanceServiceImpl {
 			}
 			if (attendanceEntity.getId() != null) {
 				headers.add(Constants.STATUS, HttpStatus.OK.toString());
-				headers.add(Constants.MESSAGE, "Expens Detail created successfully");
+				headers.add(Constants.MESSAGE, "Attendance Detail created successfully");
 				responceMap.put("Id", attendanceEntity.getId());
 				responceMap.put("Status", HttpStatus.OK);
 			} else {
@@ -70,7 +71,6 @@ public class AttendanceServiceImpl {
 			headers.add(Constants.MESSAGE, "Something went wrong");
 			responceMap.put("Status", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
-
 
 	}
 }
