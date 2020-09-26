@@ -7,6 +7,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import javax.transaction.Transactional;
 
@@ -14,16 +15,20 @@ import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MultiValueMap;
 
+import com.rvtech.prms.common.ClientDetailDto;
 import com.rvtech.prms.common.DBClientDataDto;
 import com.rvtech.prms.common.FilterDto;
 import com.rvtech.prms.common.InnvoiceDto;
 import com.rvtech.prms.common.InvoiceDetailDto;
 import com.rvtech.prms.common.InvoiceGenDto;
+import com.rvtech.prms.common.InvoiceListDTO;
 import com.rvtech.prms.common.InvoicePDFDto;
 import com.rvtech.prms.constant.Constants;
 import com.rvtech.prms.entity.AddressDetailsEntity;
@@ -224,7 +229,6 @@ public class InnviceServiceImpl {
 
 		try {
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			logger.error("ExpenceServiceImpl::create::" + e.getMessage());
 			headers.add(Constants.STATUS, HttpStatus.INTERNAL_SERVER_ERROR.toString());
 			headers.add(Constants.MESSAGE, "Something went wrong");
@@ -349,7 +353,6 @@ public class InnviceServiceImpl {
 
 		try {
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			logger.error("ExpenceServiceImpl::create::" + e.getMessage());
 			headers.add(Constants.STATUS, HttpStatus.INTERNAL_SERVER_ERROR.toString());
 			headers.add(Constants.MESSAGE, "Something went wrong");
@@ -358,16 +361,22 @@ public class InnviceServiceImpl {
 
 		return new ResponseEntity<>(dBClientDataDto, headers, HttpStatus.OK);
 	}
+	
+	
+	
 
 	public ResponseEntity<?> create(InnvoiceDto innvoiceDto) {
 
 		invoiceDetailDtos = new ArrayList<InvoiceDetailDto>();
 		daypermon = new HashMap<Integer, Float>();
+		
 		InvoiceEntity innvoiseEntity;
 		Long startTime = innvoiceDto.getFromDate().getTime();
 		Long endTime = innvoiceDto.getToDate().getTime();
+	
 		Float innCost = (float) 0;
 		Float rateCost = null;
+		
 		calendar.setTime(innvoiceDto.getFromDate());
 		int startMon = calendar.get(Calendar.MONTH) + 1;
 		calendar.setTime(innvoiceDto.getToDate());
@@ -378,16 +387,19 @@ public class InnviceServiceImpl {
 		responceMap = new HashMap<String, Object>();
 		headers = Utilities.getDefaultHeader();
 
+		// this area finding employee by project id
 		try {
 			projEmplList = new ArrayList<ProjectEmployeMappingEntity>();
 			projEmplList = projectEmployeMappingRepository.findAllByProjectId(innvoiceDto.getProjectId());
-
 		} catch (Exception e) {
 			logger.error("InnviceServiceImpl::create::Fetching employeeList on projectId" + e.getMessage());
 		}
-
+		
+		// start the calculation invoice details 
 		try {
+			
 			invoiceDetailEntities = new ArrayList<InvoiceDetailEntity>();
+			
 			for (ProjectEmployeMappingEntity employeMappingEntity : projEmplList) {
 				Date onboardingDate = employeMappingEntity.getOnbordaingDate() == null ? innvoiceDto.getFromDate()
 						: employeMappingEntity.getOnbordaingDate();
@@ -417,42 +429,50 @@ public class InnviceServiceImpl {
 				List<AttendanceEntity> attendanceEntities = attendanceRepository.findattendance(
 						employeMappingEntity.getAccountId(), dateFormatAtt.format(innvoiceDto.getFromDate()),
 						dateFormatAtt.format(innvoiceDto.getToDate()));
+
+				
+				// iterating the attendance entity
 				for (AttendanceEntity attendanceEntity : attendanceEntities) {
 					String[] splitPresentDayAray = attendanceEntity.getDayPresent().split(",");
+					// this for loop calculating day present
 					for (int i = 0; i < splitPresentDayAray.length; i++) {
 						if (splitPresentDayAray[i] != null && !splitPresentDayAray[i].equals(" ")
 								&& dateFormat.parse(splitPresentDayAray[i]).getTime() >= startTime
 								&& dateFormat.parse(splitPresentDayAray[i]).getTime() <= endTime
 								&& dateFormat.parse(splitPresentDayAray[i]).getTime() >= onboardingDate.getTime()
-								&& dateFormat.parse(splitPresentDayAray[i]).getTime() <= exitDate.getTime()) {
+								&& dateFormat.parse(splitPresentDayAray[i]).getTime() <= exitDate.getTime()
+							) {
 							dayPresent++;
 							calendar.setTime(dateFormat.parse(splitPresentDayAray[i]));
-							daypermon.put(calendar.get(Calendar.MONTH) + 1,
-									daypermon.get(calendar.get(Calendar.MONTH) + 1) + 1);
+							daypermon.put(calendar.get(Calendar.MONTH) + 1, daypermon.get(calendar.get(Calendar.MONTH) + 1) + 1);
 						}
 					}
+					
+					// this line calculating invoice cost
 					innCost = (dayPresent * rateCost) + innCost;
+					
 					String[] splitHalfDayAray = attendanceEntity.getHalfDay().split(",");
+					// this loop calculating half day invoice cost
 					for (int i = 0; i < splitHalfDayAray.length; i++) {
 						if (splitHalfDayAray[i] != null && !splitHalfDayAray[i].equals(" ")
 								&& dateFormat.parse(splitHalfDayAray[i]).getTime() >= startTime
 								&& dateFormat.parse(splitHalfDayAray[i]).getTime() <= endTime
 								&& dateFormat.parse(splitPresentDayAray[i]).getTime() >= onboardingDate.getTime()
-								&& dateFormat.parse(splitPresentDayAray[i]).getTime() <= exitDate.getTime()) {
+								&& dateFormat.parse(splitPresentDayAray[i]).getTime() <= exitDate.getTime()
+							){
 							halfDay++;
 							calendar.setTime(dateFormat.parse(splitPresentDayAray[i]));
-							daypermon.put(calendar.get(Calendar.MONTH) + 1,
-									(daypermon.get(calendar.get(Calendar.MONTH) + 1) + (float) 0.5));
+							daypermon.put(calendar.get(Calendar.MONTH) + 1,(daypermon.get(calendar.get(Calendar.MONTH) + 1) + (float) 0.5));
 						}
 					}
 					innCost = (((halfDay / 2) + (halfDay % 2)) * rateCost) + innCost;
-					// String attendancePerMon=daypermon.
 					invoiceDetailEntity.setEmployeeName(attendanceEntity.getEmployeeName());
 					invoiceDetailEntity.setEmployeeId(attendanceEntity.getEmployeeId());
 					invoiceDetailEntity.setPerDayRate(rateCost);
 					invoiceDetailEntity.setAttendancepermonth(daypermon.toString());
 					invoiceDetailEntity.setTotalAmt(innCost);
 					invoiceDetailEntity.setTotalDays((float) (dayPresent + ((halfDay / 2) + (halfDay % 2))));
+					
 					invoiceDetailEntities.add(invoiceDetailEntity);
 				}
 
@@ -494,13 +514,11 @@ public class InnviceServiceImpl {
 				responceMap.put("Status", HttpStatus.INTERNAL_SERVER_ERROR);
 			}
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			logger.error("ExpenceServiceImpl::create::" + e.getMessage());
 			headers.add(Constants.STATUS, HttpStatus.INTERNAL_SERVER_ERROR.toString());
 			headers.add(Constants.MESSAGE, "Something went wrong");
 			responceMap.put("Status", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
-
 		return new ResponseEntity<>(responceMap, headers, HttpStatus.OK);
 
 	}
@@ -593,6 +611,54 @@ public class InnviceServiceImpl {
 		}
 		return new ResponseEntity<>(invoicePDFDto, headers, HttpStatus.OK);
 
+	}
+
+	public ResponseEntity<?> listOfInvoice(int pageSize, int pageIndex) {
+		Pageable page = PageRequest.of(pageIndex, pageSize);
+		List<InvoiceListDTO> resultListOfInvoice = null;
+		responceMap = new HashMap<String, Object>();
+		headers = Utilities.getDefaultHeader();
+		try {
+			List<InvoiceEntity> tempResultInvoiceEntity = innvoiseRepository.findInvoiceList(page);
+			if (tempResultInvoiceEntity.isEmpty()) {
+				headers.add(Constants.STATUS, HttpStatus.OK.toString());
+				headers.add(Constants.MESSAGE, "There is no list of invoice");
+				responceMap.put("Status", HttpStatus.OK);
+			} else {
+				resultListOfInvoice = this.setListOfInvoice(tempResultInvoiceEntity);
+				headers.add(Constants.STATUS, HttpStatus.OK.toString());
+				headers.add(Constants.MESSAGE, "List of invoice featched successfully");
+				return new ResponseEntity<>(resultListOfInvoice, headers, HttpStatus.OK);
+			}
+		} catch (Exception e) {
+			logger.error("ExpenceServiceImpl::create::" + e.getMessage());
+			headers.add(Constants.STATUS, HttpStatus.INTERNAL_SERVER_ERROR.toString());
+			headers.add(Constants.MESSAGE, "Something went wrong");
+			responceMap.put("Status", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+
+		return new ResponseEntity<>(resultListOfInvoice, headers, HttpStatus.OK);
+	}
+
+	private List<InvoiceListDTO> setListOfInvoice(List<InvoiceEntity> tempResultInvoiceEntity) {
+		List<InvoiceListDTO> resultInvoiceDto = new ArrayList<InvoiceListDTO>();
+		for (InvoiceEntity invoiceEntity : tempResultInvoiceEntity) {
+			ProjectEntity tempProjectEntity = this.getClientNameAndPersonNameByPojectId(invoiceEntity.getProjectId());
+			InvoicePDFEntity tempInvoicePDFEntity= invoicePDFRepository.findByClientId(tempProjectEntity.getClientId(), invoiceEntity.getFromDate(), invoiceEntity.getToDate(), tempProjectEntity.getPurchaseOrder());
+			InvoiceListDTO tempObject = new InvoiceListDTO(tempProjectEntity.getClientName(),
+					invoiceEntity.getFromDate(), 
+					tempInvoicePDFEntity !=null ? tempInvoicePDFEntity.getInvoiceNo() :"", 
+					tempProjectEntity.getProjectManager(),
+					invoiceEntity.getToDate(), 
+					invoiceEntity.getTotalInvAmt(),
+					tempInvoicePDFEntity !=null ? tempInvoicePDFEntity.getId() :"");
+			resultInvoiceDto.add(GenericMapper.mapper.map(tempObject, InvoiceListDTO.class));
+		}
+		return resultInvoiceDto;
+	}
+
+	private ProjectEntity getClientNameAndPersonNameByPojectId(String projectId) {
+		return projectRepository.findByIdEntity(projectId);
 	}
 
 }

@@ -41,16 +41,16 @@ public class AttendanceEntity {
 	@Column
 	private String companyName;
 
-	@Column
+	@Column(columnDefinition = "TEXT")
 	private String dayPresent;
 
-	@Column
+	@Column(columnDefinition = "TEXT")
 	private String weekOff;
 
-	@Column
+	@Column(columnDefinition = "TEXT")
 	private String halfDay;
 
-	@Column
+	@Column(columnDefinition = "TEXT")
 	private String absent;
 
 	@Column

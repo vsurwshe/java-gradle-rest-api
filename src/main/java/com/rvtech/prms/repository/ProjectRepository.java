@@ -14,6 +14,9 @@ import com.rvtech.prms.entity.ProjectEntity;
 public interface ProjectRepository extends CrudRepository<ProjectEntity, String> {
 
 	Optional<ProjectEntity> findById(String id);
+	
+	@Query(value="SELECT * FROM project WHERE id=:ProjectId", nativeQuery = true)
+	ProjectEntity findByIdEntity(@Param("ProjectId")String ProjectId);
 
 	List<ProjectEntity> findAllByProjectNameOrClientNameContainingOrClientIdContainingAndActive(String projectName,
 			String clientName, String clientId, Boolean active, Pageable page);

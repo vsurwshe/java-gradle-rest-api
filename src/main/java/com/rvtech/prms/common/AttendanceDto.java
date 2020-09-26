@@ -2,6 +2,7 @@ package com.rvtech.prms.common;
 
 import java.util.Date;
 
+import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 
